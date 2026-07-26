@@ -233,18 +233,29 @@ function Library:CreateWindow(config)
 			end)
 		end
 
+		-- 소수점 및 0.05 단위 간격(Step) 지원 슬라이더
 		function TabMethods:CreateSlider(text, min, max, default, callback)
 			local Frame = Instance.new("Frame")
 			Frame.Size = UDim2.new(1, -10, 0, 50)
 			Frame.BackgroundColor3 = Color3.fromRGB(85, 50, 32)
 			Frame.Parent = ScrollFrame
 
-			local initPct = math.clamp((default - min) / (max - min), 0, 1)
+			local step = (max <= 1 or (max - min) <= 1) and 0.05 or 1
+			local range = max - min
+			local initPct = math.clamp((default - min) / (range == 0 and 1 or range), 0, 1)
+
+			local function formatVal(v)
+				if step < 1 then
+					return string.format("%.2f", v)
+				else
+					return tostring(math.floor(v + 0.5))
+				end
+			end
 
 			local Label = Instance.new("TextLabel")
 			Label.Size = UDim2.new(0.4, 0, 1, 0)
 			Label.Position = UDim2.new(0, 12, 0, 0)
-			Label.Text = text .. " (" .. tostring(default) .. ")"
+			Label.Text = text .. " (" .. formatVal(default) .. ")"
 			Label.TextColor3 = Color3.fromRGB(255, 252, 245)
 			Label.Font = Enum.Font.SourceSans
 			Label.TextSize = 14
@@ -275,12 +286,17 @@ function Library:CreateWindow(config)
 			end)
 			userInputService.InputChanged:Connect(function(input)
 				if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-					local percentage = math.clamp((input.Position.X - SliderTrack.AbsolutePosition.X) / SliderTrack.AbsoluteSize.X, 0, 1)
-					SliderButton.Position = UDim2.new(percentage, -8, 0.5, -10)
+					local rawPct = math.clamp((input.Position.X - SliderTrack.AbsolutePosition.X) / SliderTrack.AbsoluteSize.X, 0, 1)
 					
-					local actualValue = math.floor(min + (percentage * (max - min)) + 0.5)
-					Label.Text = text .. " (" .. tostring(actualValue) .. ")"
-					if callback then callback(actualValue) end
+					local rawVal = min + (rawPct * range)
+					local steppedVal = math.floor((rawVal / step) + 0.5) * step
+					steppedVal = math.clamp(steppedVal, min, max)
+
+					local snappedPct = (steppedVal - min) / (range == 0 and 1 or range)
+					SliderButton.Position = UDim2.new(snappedPct, -8, 0.5, -10)
+
+					Label.Text = text .. " (" .. formatVal(steppedVal) .. ")"
+					if callback then callback(steppedVal) end
 				end
 			end)
 		end
@@ -406,9 +422,16 @@ function Library:CreateWindow(config)
 		return TabMethods
 	end
 
-	-- 내장 Settings 탭 생성 (단축키 설정)
+	-- 내장 Settings 탭 생성 (단축키 및 투명도 설정)
 	local SettingsTab = WindowMethods:CreateTab("⚙️ㆍSettings")
 	
+	-- 1. UI 투명도 조절 (0 ~ 1 범위, 0.05 단위)
+	SettingsTab:CreateSlider("UI 투명도", 0, 1, 0.25, function(val)
+		MainFrame.BackgroundTransparency = val
+		Topbar.BackgroundTransparency = val
+	end)
+
+	-- 2. 단축키 바인딩
 	local BindFrame = Instance.new("Frame")
 	BindFrame.Size = UDim2.new(1, -10, 0, 45)
 	BindFrame.BackgroundColor3 = Color3.fromRGB(85, 50, 32)
