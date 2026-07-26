@@ -188,7 +188,23 @@ function Library:CreateWindow(config)
 
 		local TabMethods = {}
 
-		-- 토글
+		-- 버튼 생성
+		function TabMethods:CreateButton(text, callback)
+			local Btn = Instance.new("TextButton")
+			Btn.Size = UDim2.new(1, -10, 0, 38)
+			Btn.BackgroundColor3 = Color3.fromRGB(85, 50, 32)
+			Btn.Text = text
+			Btn.TextColor3 = Color3.fromRGB(255, 252, 245)
+			Btn.Font = Enum.Font.SourceSansBold
+			Btn.TextSize = 14
+			Btn.Parent = ScrollFrame
+
+			Btn.MouseButton1Click:Connect(function()
+				if callback then callback() end
+			end)
+		end
+
+		-- 토글 생성
 		function TabMethods:CreateToggle(text, callback)
 			local Frame = Instance.new("Frame")
 			Frame.Size = UDim2.new(1, -10, 0, 38)
@@ -226,11 +242,11 @@ function Library:CreateWindow(config)
 					ToggleIndicator.BackgroundColor3 = Color3.fromRGB(110, 70, 55)
 					ToggleIndicator.Text = "OFF"
 				end
-				callback(enabled)
+				if callback then callback(enabled) end
 			end)
 		end
 
-		-- 슬라이더
+		-- 슬라이더 생성
 		function TabMethods:CreateSlider(text, min, max, default, callback)
 			local Frame = Instance.new("Frame")
 			Frame.Size = UDim2.new(1, -10, 0, 50)
@@ -278,12 +294,46 @@ function Library:CreateWindow(config)
 					
 					local actualValue = math.floor(min + (percentage * (max - min)) + 0.5)
 					Label.Text = text .. " (" .. tostring(actualValue) .. ")"
-					callback(actualValue)
+					if callback then callback(actualValue) end
 				end
 			end)
 		end
 
-		-- 드롭다운 (환장 오디세이 스크룰/드래그 가능 리스트 방식)
+		-- 텍스트 상자 생성
+		function TabMethods:CreateTextBox(text, placeholder, callback)
+			local Frame = Instance.new("Frame")
+			Frame.Size = UDim2.new(1, -10, 0, 45)
+			Frame.BackgroundColor3 = Color3.fromRGB(85, 50, 32)
+			Frame.Parent = ScrollFrame
+
+			local Label = Instance.new("TextLabel")
+			Label.Size = UDim2.new(0.4, 0, 1, 0)
+			Label.Position = UDim2.new(0, 12, 0, 0)
+			Label.Text = text
+			Label.TextColor3 = Color3.fromRGB(255, 252, 245)
+			Label.Font = Enum.Font.SourceSans
+			Label.TextSize = 14
+			Label.TextXAlignment = Enum.TextXAlignment.Left
+			Label.BackgroundTransparency = 1
+			Label.Parent = Frame
+
+			local Box = Instance.new("TextBox")
+			Box.Size = UDim2.new(0.5, 0, 0, 30)
+			Box.Position = UDim2.new(0.45, 0, 0.5, -15)
+			Box.BackgroundColor3 = Color3.fromRGB(50, 28, 16)
+			Box.Text = ""
+			Box.PlaceholderText = placeholder or "입력..."
+			Box.TextColor3 = Color3.fromRGB(255, 252, 245)
+			Box.Font = Enum.Font.SourceSans
+			Box.TextSize = 14
+			Box.Parent = Frame
+
+			Box.FocusLost:Connect(function(enterPressed)
+				if callback then callback(Box.Text) end
+			end)
+		end
+
+		-- 드롭다운 생성
 		function TabMethods:CreateDropdown(text, options, defaultKey, nameMap, callback)
 			nameMap = nameMap or {}
 			local DropdownFrame = Instance.new("Frame")
@@ -364,7 +414,7 @@ function Library:CreateWindow(config)
 					selectedDisplay = displayText
 					MainBtn.Text = selectedDisplay .. " ▼"
 					toggleDropdown()
-					callback(keyOpt)
+					if callback then callback(keyOpt) end
 				end)
 			end
 		end
