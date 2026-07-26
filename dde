@@ -43,7 +43,6 @@ function Library:CreateWindow(config)
 
 	local toggleKey = Enum.KeyCode.K
 	local isBinding = false
-	local BindBtn = nil
 
 	local oldGui = coreGui:FindFirstChild("WinTeleportsGui")
 	if oldGui then pcall(function() oldGui:Destroy() end) end
@@ -81,21 +80,6 @@ function Library:CreateWindow(config)
 	ToggleMainBtn.Parent = ScreenGui
 	makeDraggable(ToggleMainBtn)
 	ToggleMainBtn.MouseButton1Click:Connect(function() MainFrame.Visible = not MainFrame.Visible end)
-
-	userInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed then return end
-		if isBinding then
-			if input.UserInputType == Enum.UserInputType.Keyboard then
-				toggleKey = input.KeyCode
-				isBinding = false
-				if BindBtn then BindBtn.Text = toggleKey.Name end
-			end
-		else
-			if input.KeyCode == toggleKey then
-				MainFrame.Visible = not MainFrame.Visible
-			end
-		end
-	end)
 
 	local Topbar = Instance.new("Frame")
 	Topbar.Size = UDim2.new(1, 0, 0, 40)
@@ -145,6 +129,15 @@ function Library:CreateWindow(config)
 
 	local tabs = {}
 
+	local function selectTab(targetTab)
+		for _, t in ipairs(tabs) do
+			t.Scroll.Visible = false
+			t.Btn.BackgroundColor3 = Color3.fromRGB(95, 55, 35)
+		end
+		targetTab.Scroll.Visible = true
+		targetTab.Btn.BackgroundColor3 = Color3.fromRGB(255, 180, 90)
+	end
+
 	local WindowMethods = {}
 	function WindowMethods:CreateTab(tabName)
 		local ScrollFrame = Instance.new("ScrollingFrame")
@@ -171,24 +164,19 @@ function Library:CreateWindow(config)
 		TabBtn.TextSize = 14
 		TabBtn.Parent = TabContainer
 
+		local tabObj = {Scroll = ScrollFrame, Btn = TabBtn}
+		table.insert(tabs, tabObj)
+
 		TabBtn.MouseButton1Click:Connect(function()
-			for _, t in pairs(tabs) do
-				t.Scroll.Visible = false
-				t.Btn.BackgroundColor3 = Color3.fromRGB(95, 55, 35)
-			end
-			ScrollFrame.Visible = true
-			TabBtn.BackgroundColor3 = Color3.fromRGB(255, 180, 90)
+			selectTab(tabObj)
 		end)
 
-		table.insert(tabs, {Scroll = ScrollFrame, Btn = TabBtn})
 		if #tabs == 1 then
-			ScrollFrame.Visible = true
-			TabBtn.BackgroundColor3 = Color3.fromRGB(255, 180, 90)
+			selectTab(tabObj)
 		end
 
 		local TabMethods = {}
 
-		-- 버튼 생성
 		function TabMethods:CreateButton(text, callback)
 			local Btn = Instance.new("TextButton")
 			Btn.Size = UDim2.new(1, -10, 0, 38)
@@ -204,7 +192,6 @@ function Library:CreateWindow(config)
 			end)
 		end
 
-		-- 토글 생성
 		function TabMethods:CreateToggle(text, callback)
 			local Frame = Instance.new("Frame")
 			Frame.Size = UDim2.new(1, -10, 0, 38)
@@ -246,7 +233,6 @@ function Library:CreateWindow(config)
 			end)
 		end
 
-		-- 슬라이더 생성
 		function TabMethods:CreateSlider(text, min, max, default, callback)
 			local Frame = Instance.new("Frame")
 			Frame.Size = UDim2.new(1, -10, 0, 50)
@@ -299,7 +285,6 @@ function Library:CreateWindow(config)
 			end)
 		end
 
-		-- 텍스트 상자 생성
 		function TabMethods:CreateTextBox(text, placeholder, callback)
 			local Frame = Instance.new("Frame")
 			Frame.Size = UDim2.new(1, -10, 0, 45)
@@ -333,7 +318,6 @@ function Library:CreateWindow(config)
 			end)
 		end
 
-		-- 드롭다운 생성
 		function TabMethods:CreateDropdown(text, options, defaultKey, nameMap, callback)
 			nameMap = nameMap or {}
 			local DropdownFrame = Instance.new("Frame")
@@ -421,6 +405,55 @@ function Library:CreateWindow(config)
 
 		return TabMethods
 	end
+
+	-- 내장 Settings 탭 생성 (단축키 설정)
+	local SettingsTab = WindowMethods:CreateTab("⚙️ㆍSettings")
+	
+	local BindFrame = Instance.new("Frame")
+	BindFrame.Size = UDim2.new(1, -10, 0, 45)
+	BindFrame.BackgroundColor3 = Color3.fromRGB(85, 50, 32)
+	BindFrame.Parent = tabs[#tabs].Scroll
+
+	local BindLabel = Instance.new("TextLabel")
+	BindLabel.Size = UDim2.new(0.4, 0, 1, 0)
+	BindLabel.Position = UDim2.new(0, 12, 0, 0)
+	BindLabel.Text = "UI 열기/닫기 단축키"
+	BindLabel.TextColor3 = Color3.fromRGB(255, 252, 245)
+	BindLabel.Font = Enum.Font.SourceSans
+	BindLabel.TextSize = 14
+	BindLabel.TextXAlignment = Enum.TextXAlignment.Left
+	BindLabel.BackgroundTransparency = 1
+	BindLabel.Parent = BindFrame
+
+	local BindBtn = Instance.new("TextButton")
+	BindBtn.Size = UDim2.new(0.5, 0, 0, 30)
+	BindBtn.Position = UDim2.new(0.45, 0, 0.5, -15)
+	BindBtn.BackgroundColor3 = Color3.fromRGB(50, 28, 16)
+	BindBtn.Text = toggleKey.Name
+	BindBtn.TextColor3 = Color3.fromRGB(255, 220, 180)
+	BindBtn.Font = Enum.Font.SourceSansBold
+	BindBtn.TextSize = 14
+	BindBtn.Parent = BindFrame
+
+	BindBtn.MouseButton1Click:Connect(function()
+		isBinding = true
+		BindBtn.Text = "키 입력 대기..."
+	end)
+
+	userInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed then return end
+		if isBinding then
+			if input.UserInputType == Enum.UserInputType.Keyboard then
+				toggleKey = input.KeyCode
+				isBinding = false
+				BindBtn.Text = toggleKey.Name
+			end
+		else
+			if input.KeyCode == toggleKey then
+				MainFrame.Visible = not MainFrame.Visible
+			end
+		end
+	end)
 
 	return WindowMethods
 end
