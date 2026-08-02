@@ -129,7 +129,7 @@ function Library:CreateWindow(config)
 	ContentContainer.Parent = MainFrame
 
 	local tabs = {}
-	local registeredFlags = {} -- 콘픽 저장/불러오기를 위한 플래그 데이터 저장소
+	local registeredFlags = {}
 
 	local function selectTab(targetTab)
 		for _, t in ipairs(tabs) do
@@ -147,7 +147,6 @@ function Library:CreateWindow(config)
 		ScrollFrame.BackgroundTransparency = 1
 		ScrollFrame.BorderSizePixel = 0
 		ScrollFrame.ScrollBarThickness = 4
-		ScrollFolderVisible = false
 		ScrollFrame.Visible = false
 		ScrollFrame.Parent = ContentContainer
 
@@ -391,8 +390,8 @@ function Library:CreateWindow(config)
 			Label.BackgroundTransparency = 1
 			Label.Parent = DropdownFrame
 
-			local selectedKey = defaultKey or options[1]
-			local selectedDisplay = nameMap[selectedKey] or selectedKey
+			local selectedKey = defaultKey or (options[1] or "")
+			local selectedDisplay = nameMap[selectedKey] or (selectedKey ~= "" and selectedKey or "없음")
 
 			local MainBtn = Instance.new("TextButton")
 			MainBtn.Size = UDim2.new(0.5, 0, 0, 30)
@@ -423,7 +422,7 @@ function Library:CreateWindow(config)
 				isOpen = not isOpen
 				if isOpen then
 					local maxDisplayHeight = 150
-					local calculatedHeight = math.min(#options * 25, maxDisplayHeight)
+					local calculatedHeight = math.min(math.max(#options, 1) * 25, maxDisplayHeight)
 					Container.Size = UDim2.new(0.5, 0, 0, calculatedHeight)
 					DropdownFrame.Size = UDim2.new(1, -10, 0, 45 + calculatedHeight + 5)
 					MainBtn.Text = selectedDisplay .. " ▲"
@@ -436,40 +435,70 @@ function Library:CreateWindow(config)
 
 			MainBtn.MouseButton1Click:Connect(toggleDropdown)
 
-			local function setSelected(keyOpt)
-				if table.find(options, keyOpt) then
-					selectedKey = keyOpt
-					selectedDisplay = nameMap[keyOpt] or keyOpt
+			local function refreshOptions(newOptions)
+				options = newOptions
+				for _, child in ipairs(Container:GetChildren()) do
+					if child:IsA("TextButton") then child:Destroy() end
+				end
+				
+				if #options == 0 then
+					local EmptyBtn = Instance.new("TextButton")
+					EmptyBtn.Size = UDim2.new(1, 0, 0, 25)
+					EmptyBtn.BackgroundColor3 = Color3.fromRGB(60, 35, 20)
+					EmptyBtn.Text = "콘픽 없음"
+					EmptyBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
+					EmptyBtn.Font = Enum.Font.SourceSans
+					EmptyBtn.TextSize = 13
+					EmptyBtn.Parent = Container
+					selectedKey = ""
+					selectedDisplay = "없음"
 					MainBtn.Text = selectedDisplay .. " ▼"
-					if callback then callback(keyOpt) end
+				else
+					for _, keyOpt in ipairs(options) do
+						local displayText = nameMap[keyOpt] or keyOpt
+						local OptBtn = Instance.new("TextButton")
+						OptBtn.Size = UDim2.new(1, 0, 0, 25)
+						OptBtn.BackgroundColor3 = Color3.fromRGB(60, 35, 20)
+						OptBtn.Text = displayText
+						OptBtn.TextColor3 = Color3.fromRGB(255, 252, 245)
+						OptBtn.Font = Enum.Font.SourceSans
+						OptBtn.TextSize = 13
+						OptBtn.Parent = Container
+
+						OptBtn.MouseButton1Click:Connect(function()
+							selectedKey = keyOpt
+							selectedDisplay = displayText
+							MainBtn.Text = selectedDisplay .. " ▼"
+							if isOpen then toggleDropdown() end
+							if callback then callback(keyOpt) end
+						end)
+					end
+					if not table.find(options, selectedKey) then
+						selectedKey = options[1]
+						selectedDisplay = nameMap[selectedKey] or selectedKey
+						MainBtn.Text = selectedDisplay .. " ▼"
+					end
 				end
 			end
 
-			for _, keyOpt in ipairs(options) do
-				local displayText = nameMap[keyOpt] or keyOpt
-				local OptBtn = Instance.new("TextButton")
-				OptBtn.Size = UDim2.new(1, 0, 0, 25)
-				OptBtn.BackgroundColor3 = Color3.fromRGB(60, 35, 20)
-				OptBtn.Text = displayText
-				OptBtn.TextColor3 = Color3.fromRGB(255, 252, 245)
-				OptBtn.Font = Enum.Font.SourceSans
-				OptBtn.TextSize = 13
-				OptBtn.Parent = Container
-
-				OptBtn.MouseButton1Click:Connect(function()
-					selectedKey = keyOpt
-					selectedDisplay = displayText
-					MainBtn.Text = selectedDisplay .. " ▼"
-					if isOpen then toggleDropdown() end
-					if callback then callback(keyOpt) end
-				end)
-			end
+			refreshOptions(options)
 
 			if flagName then
 				registeredFlags[flagName] = {
 					type = "Dropdown",
 					get = function() return selectedKey end,
-					set = function(v) setSelected(v) end
+					set = function(v) 
+						if type(v) == "table" then
+							refreshOptions(v)
+						else
+							if table.find(options, v) then
+								selectedKey = v
+								selectedDisplay = nameMap[v] or v
+								MainBtn.Text = selectedDisplay .. " ▼"
+								if callback then callback(v) end
+							end
+						end
+					end
 				}
 			end
 		end
@@ -477,7 +506,7 @@ function Library:CreateWindow(config)
 		return TabMethods
 	end
 
-	-- 내장 Settings 탭 생성 (단축키, 투명도 및 설정 콘픽 시스템 통합)
+	-- 내장 Settings 탭 생성
 	local SettingsTab = WindowMethods:CreateTab("⚙️ㆍSettings")
 	
 	-- 1. UI 투명도 조절
@@ -533,7 +562,7 @@ function Library:CreateWindow(config)
 		end
 	end)
 
-	-- 3. 콘픽(설정) 매니저 시스템 추가
+	-- 3. 콘픽(설정) 매니저 시스템 (초기 빈 상태 지원)
 	local ConfigFolderName = "CustomHubConfigs"
 	if writefile and not isfolder(ConfigFolderName) then
 		makefolder(ConfigFolderName)
@@ -549,23 +578,26 @@ function Library:CreateWindow(config)
 				end
 			end
 		end
-		if #list == 0 then table.insert(list, "default") end
 		return list
 	end
 
-	-- 콘픽 이름 입력 텍스트박스
 	SettingsTab:CreateTextBox("콘픽 이름", "이름 입력...", "ConfigNameBox", function(val) end)
 
-	-- 콘픽 선택 드롭다운 생성
-	local currentConfigs = getConfigsList()
-	SettingsTab:CreateDropdown("콘픽 선택", currentConfigs, currentConfigs[1], {}, "SelectedConfigDropdown", function(val) end)
+	local initialConfigs = getConfigsList()
+	SettingsTab:CreateDropdown("콘픽 선택", initialConfigs, initialConfigs[1], {}, "SelectedConfigDropdown", function(val) end)
 
-	-- 버튼들 (추가/저장, 불러오기, 덮어씌우기, 삭제)
+	local function refreshDropdownList()
+		local dropFlag = registeredFlags["SelectedConfigDropdown"]
+		if dropFlag and dropFlag.set then
+			dropFlag.set(getConfigsList())
+		end
+	end
+
 	SettingsTab:CreateButton("새로 저장 (추가)", function()
 		if not writefile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
 		local nameBox = registeredFlags["ConfigNameBox"]
 		local configName = nameBox and nameBox.get() or ""
-		if configName == "" then configName = "config_" .. math.random(1000, 9999) end
+		if configName == "" then return warn("콘픽 이름을 입력해주세요.") end
 
 		local saveData = {}
 		for flag, data in pairs(registeredFlags) do
@@ -575,14 +607,15 @@ function Library:CreateWindow(config)
 		end
 
 		writefile(ConfigFolderName .. "/" .. configName .. ".json", httpService:JSONEncode(saveData))
-		-- 드롭다운 갱신 필요시 안내
+		refreshDropdownList()
 		print("콘픽 저장 완료: " .. configName)
 	end)
 
 	SettingsTab:CreateButton("선택한 콘픽 불러오기", function()
 		if not readfile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
 		local drop = registeredFlags["SelectedConfigDropdown"]
-		local configName = drop and drop.get() or "default"
+		local configName = drop and drop.get() or ""
+		if configName == "" then return warn("불러올 콘픽이 선택되지 않았습니다.") end
 		local filePath = ConfigFolderName .. "/" .. configName .. ".json"
 
 		if isfile and isfile(filePath) then
@@ -605,7 +638,8 @@ function Library:CreateWindow(config)
 	SettingsTab:CreateButton("선택한 콘픽 덮어씌우기", function()
 		if not writefile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
 		local drop = registeredFlags["SelectedConfigDropdown"]
-		local configName = drop and drop.get() or "default"
+		local configName = drop and drop.get() or ""
+		if configName == "" then return warn("덮어씌울 콘픽이 선택되지 않았습니다.") end
 		local filePath = ConfigFolderName .. "/" .. configName .. ".json"
 
 		local saveData = {}
@@ -622,12 +656,13 @@ function Library:CreateWindow(config)
 	SettingsTab:CreateButton("선택한 콘픽 삭제", function()
 		if not delfile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
 		local drop = registeredFlags["SelectedConfigDropdown"]
-		local configName = drop and drop.get() or "default"
-		if configName == "default" then return warn("default 콘픽은 삭제할 수 없습니다.") end
+		local configName = drop and drop.get() or ""
+		if configName == "" then return warn("삭제할 콘픽이 선택되지 않았습니다.") end
 		local filePath = ConfigFolderName .. "/" .. configName .. ".json"
 
 		if isfile and isfile(filePath) then
 			delfile(filePath)
+			refreshDropdownList()
 			print("콘픽 삭제 완료: " .. configName)
 		end
 	end)
