@@ -553,7 +553,7 @@ function Library:CreateWindow(config)
 		end
 	end)
 
-	-- 3. 콘픽(설정) 매니저 시스템 (기본값 'New' 제공)
+	-- 3. 콘픽(설정) 매니저 시스템 (최초 'New' 기본 제공)
 	local ConfigFolderName = "CustomHubConfigs"
 	if writefile and not isfolder(ConfigFolderName) then
 		makefolder(ConfigFolderName)
@@ -603,7 +603,6 @@ function Library:CreateWindow(config)
 		writefile(ConfigFolderName .. "/" .. configName .. ".json", httpService:JSONEncode(saveData))
 		refreshDropdownList()
 		
-		-- 저장 후 드롭다운 선택을 새로 만든 파일명으로 지정
 		local dropFlag = registeredFlags["SelectedConfigDropdown"]
 		if dropFlag and dropFlag.set then
 			dropFlag.set(configName)
