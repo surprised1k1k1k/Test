@@ -2,7 +2,6 @@ local Library = {}
 
 local success, coreGui = pcall(function() return game:GetService("CoreGui") end)
 local uisSuccess, userInputService = pcall(function() return game:GetService("UserInputService") end)
-local httpService = game:GetService("HttpService")
 
 if not success or not uisSuccess or not coreGui or not userInputService then
 	warn("실행기 문제: 현재 익스큐터가 필요한 서비스를 지원하지 않거나 보안 제한이 걸려 있습니다.")
@@ -129,7 +128,6 @@ function Library:CreateWindow(config)
 	ContentContainer.Parent = MainFrame
 
 	local tabs = {}
-	local registeredFlags = {} -- 콘픽 저장/불러오기를 위한 플래그 데이터 저장소
 
 	local function selectTab(targetTab)
 		for _, t in ipairs(tabs) do
@@ -147,7 +145,6 @@ function Library:CreateWindow(config)
 		ScrollFrame.BackgroundTransparency = 1
 		ScrollFrame.BorderSizePixel = 0
 		ScrollFrame.ScrollBarThickness = 4
-		ScrollFolderVisible = false
 		ScrollFrame.Visible = false
 		ScrollFrame.Parent = ContentContainer
 
@@ -195,7 +192,7 @@ function Library:CreateWindow(config)
 			end)
 		end
 
-		function TabMethods:CreateToggle(text, flagName, callback)
+		function TabMethods:CreateToggle(text, callback)
 			local Frame = Instance.new("Frame")
 			Frame.Size = UDim2.new(1, -10, 0, 38)
 			Frame.BackgroundColor3 = Color3.fromRGB(85, 50, 32)
@@ -223,8 +220,8 @@ function Library:CreateWindow(config)
 			ToggleIndicator.Parent = Frame
 
 			local enabled = false
-			local function updateState(state)
-				enabled = state
+			ToggleIndicator.MouseButton1Click:Connect(function()
+				enabled = not enabled
 				if enabled then
 					ToggleIndicator.BackgroundColor3 = Color3.fromRGB(255, 170, 80)
 					ToggleIndicator.Text = "ON"
@@ -233,22 +230,11 @@ function Library:CreateWindow(config)
 					ToggleIndicator.Text = "OFF"
 				end
 				if callback then callback(enabled) end
-			end
-
-			ToggleIndicator.MouseButton1Click:Connect(function()
-				updateState(not enabled)
 			end)
-
-			if flagName then
-				registeredFlags[flagName] = {
-					type = "Toggle",
-					get = function() return enabled end,
-					set = function(v) updateState(v) end
-				}
-			end
 		end
 
-		function TabMethods:CreateSlider(text, min, max, default, flagName, callback)
+		-- 소수점 및 0.05 단위 간격(Step) 지원 슬라이더
+		function TabMethods:CreateSlider(text, min, max, default, callback)
 			local Frame = Instance.new("Frame")
 			Frame.Size = UDim2.new(1, -10, 0, 50)
 			Frame.BackgroundColor3 = Color3.fromRGB(85, 50, 32)
@@ -256,7 +242,6 @@ function Library:CreateWindow(config)
 
 			local step = (max <= 1 or (max - min) <= 1) and 0.05 or 1
 			local range = max - min
-			local currentValue = default
 			local initPct = math.clamp((default - min) / (range == 0 and 1 or range), 0, 1)
 
 			local function formatVal(v)
@@ -292,15 +277,6 @@ function Library:CreateWindow(config)
 			SliderButton.Text = ""
 			SliderButton.Parent = SliderTrack
 
-			local function setValue(val)
-				val = math.clamp(val, min, max)
-				currentValue = val
-				local snappedPct = (val - min) / (range == 0 and 1 or range)
-				SliderButton.Position = UDim2.new(snappedPct, -8, 0.5, -10)
-				Label.Text = text .. " (" .. formatVal(val) .. ")"
-				if callback then callback(val) end
-			end
-
 			local dragging = false
 			SliderButton.InputBegan:Connect(function(input)
 				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = true end
@@ -311,22 +287,21 @@ function Library:CreateWindow(config)
 			userInputService.InputChanged:Connect(function(input)
 				if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 					local rawPct = math.clamp((input.Position.X - SliderTrack.AbsolutePosition.X) / SliderTrack.AbsoluteSize.X, 0, 1)
+					
 					local rawVal = min + (rawPct * range)
 					local steppedVal = math.floor((rawVal / step) + 0.5) * step
-					setValue(steppedVal)
+					steppedVal = math.clamp(steppedVal, min, max)
+
+					local snappedPct = (steppedVal - min) / (range == 0 and 1 or range)
+					SliderButton.Position = UDim2.new(snappedPct, -8, 0.5, -10)
+
+					Label.Text = text .. " (" .. formatVal(steppedVal) .. ")"
+					if callback then callback(steppedVal) end
 				end
 			end)
-
-			if flagName then
-				registeredFlags[flagName] = {
-					type = "Slider",
-					get = function() return currentValue end,
-					set = function(v) setValue(v) end
-				}
-			end
 		end
 
-		function TabMethods:CreateTextBox(text, placeholder, flagName, callback)
+		function TabMethods:CreateTextBox(text, placeholder, callback)
 			local Frame = Instance.new("Frame")
 			Frame.Size = UDim2.new(1, -10, 0, 45)
 			Frame.BackgroundColor3 = Color3.fromRGB(85, 50, 32)
@@ -354,25 +329,12 @@ function Library:CreateWindow(config)
 			Box.TextSize = 14
 			Box.Parent = Frame
 
-			local function setText(val)
-				Box.Text = tostring(val)
-				if callback then callback(Box.Text) end
-			end
-
 			Box.FocusLost:Connect(function(enterPressed)
 				if callback then callback(Box.Text) end
 			end)
-
-			if flagName then
-				registeredFlags[flagName] = {
-					type = "TextBox",
-					get = function() return Box.Text end,
-					set = function(v) setText(v) end
-				}
-			end
 		end
 
-		function TabMethods:CreateDropdown(text, options, defaultKey, nameMap, flagName, callback)
+		function TabMethods:CreateDropdown(text, options, defaultKey, nameMap, callback)
 			nameMap = nameMap or {}
 			local DropdownFrame = Instance.new("Frame")
 			DropdownFrame.Size = UDim2.new(1, -10, 0, 45)
@@ -436,15 +398,6 @@ function Library:CreateWindow(config)
 
 			MainBtn.MouseButton1Click:Connect(toggleDropdown)
 
-			local function setSelected(keyOpt)
-				if table.find(options, keyOpt) then
-					selectedKey = keyOpt
-					selectedDisplay = nameMap[keyOpt] or keyOpt
-					MainBtn.Text = selectedDisplay .. " ▼"
-					if callback then callback(keyOpt) end
-				end
-			end
-
 			for _, keyOpt in ipairs(options) do
 				local displayText = nameMap[keyOpt] or keyOpt
 				local OptBtn = Instance.new("TextButton")
@@ -460,28 +413,20 @@ function Library:CreateWindow(config)
 					selectedKey = keyOpt
 					selectedDisplay = displayText
 					MainBtn.Text = selectedDisplay .. " ▼"
-					if isOpen then toggleDropdown() end
+					toggleDropdown()
 					if callback then callback(keyOpt) end
 				end)
-			end
-
-			if flagName then
-				registeredFlags[flagName] = {
-					type = "Dropdown",
-					get = function() return selectedKey end,
-					set = function(v) setSelected(v) end
-				}
 			end
 		end
 
 		return TabMethods
 	end
 
-	-- 내장 Settings 탭 생성 (단축키, 투명도 및 설정 콘픽 시스템 통합)
+	-- 내장 Settings 탭 생성 (단축키 및 투명도 설정)
 	local SettingsTab = WindowMethods:CreateTab("⚙️ㆍSettings")
 	
-	-- 1. UI 투명도 조절
-	SettingsTab:CreateSlider("UI 투명도", 0, 1, 0.25, nil, function(val)
+	-- 1. UI 투명도 조절 (0 ~ 1 범위, 0.05 단위)
+	SettingsTab:CreateSlider("UI 투명도", 0, 1, 0.25, function(val)
 		MainFrame.BackgroundTransparency = val
 		Topbar.BackgroundTransparency = val
 	end)
@@ -530,97 +475,6 @@ function Library:CreateWindow(config)
 			if input.KeyCode == toggleKey then
 				MainFrame.Visible = not MainFrame.Visible
 			end
-		end
-	end)
-
-	-- 3. 콘픽(설정) 매니저 시스템 추가
-	local ConfigFolderName = "CustomHubConfigs"
-	if writefile and not isfolder(ConfigFolderName) then
-		makefolder(ConfigFolderName)
-	end
-
-	local function getConfigsList()
-		local list = {}
-		if listfiles and isfolder(ConfigFolderName) then
-			for _, file in ipairs(listfiles(ConfigFolderName)) do
-				local name = file:match("([^/]+)$")
-				if name and name:sub(-5) == ".json" then
-					table.insert(list, name:sub(1, -6))
-				end
-			end
-		end
-		if #list == 0 then table.insert(list, "default") end
-		return list
-	end
-
-	-- 콘픽 이름 입력 텍스트박스
-	SettingsTab:CreateTextBox("콘픽 이름", "이름 입력...", "ConfigNameBox", function(val) end)
-
-	-- 콘픽 선택 드롭다운 생성
-	local currentConfigs = getConfigsList()
-	SettingsTab:CreateDropdown("콘픽 선택", currentConfigs, currentConfigs[1], {}, "SelectedConfigDropdown", function(val) end)
-
-	-- 버튼들 (추가/저장, 불러오기, 덮어씌우기, 삭제)
-	SettingsTab:CreateButton("새로 저장 (추가)", function()
-		if not writefile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
-		local nameBox = registeredFlags["ConfigNameBox"]
-		local configName = nameBox and nameBox.get() or ""
-		if configName == "" then configName = "config_" .. math.random(1000, 9999) end
-
-		local saveData = {}
-		for flag, data in pairs(registeredFlags) do
-			if flag ~= "ConfigNameBox" and flag ~= "SelectedConfigDropdown" then
-				saveData[flag] = data.get()
-			end
-		end
-
-		writefile(ConfigFolderName .. "/" .. configName .. ".json", httpService:JSONEncode(saveData))
-	end)
-
-	SettingsTab:CreateButton("선택한 콘픽 불러오기", function()
-		if not readfile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
-		local drop = registeredFlags["SelectedConfigDropdown"]
-		local configName = drop and drop.get() or "default"
-		local filePath = ConfigFolderName .. "/" .. configName .. ".json"
-
-		if isfile and isfile(filePath) then
-			local success, decoded = pcall(function()
-				return httpService:JSONDecode(readfile(filePath))
-			end)
-			if success and type(decoded) == "table" then
-				for flag, val in pairs(decoded) do
-					if registeredFlags[flag] and registeredFlags[flag].set then
-						registeredFlags[flag].set(val)
-					end
-				end
-			end
-		end
-	end)
-
-	SettingsTab:CreateButton("선택한 콘픽 덮어씌우기", function()
-		if not writefile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
-		local drop = registeredFlags["SelectedConfigDropdown"]
-		local configName = drop and drop.get() or "default"
-		local filePath = ConfigFolderName .. "/" .. configName .. ".json"
-
-		local saveData = {}
-		for flag, data in pairs(registeredFlags) do
-			if flag ~= "ConfigNameBox" and flag ~= "SelectedConfigDropdown" then
-				saveData[flag] = data.get()
-			end
-		end
-
-		writefile(filePath, httpService:JSONEncode(saveData))
-	end)
-
-	SettingsTab:CreateButton("선택한 콘픽 삭제", function()
-		if not delfile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
-		local drop = registeredFlags["SelectedConfigDropdown"]
-		local configName = drop and drop.get() or "default"
-		local filePath = ConfigFolderName .. "/" .. configName .. ".json"
-
-		if isfile and isfile(filePath) then
-			delfile(filePath)
 		end
 	end)
 
