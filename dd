@@ -575,8 +575,6 @@ function Library:CreateWindow(config)
 		end
 
 		writefile(ConfigFolderName .. "/" .. configName .. ".json", httpService:JSONEncode(saveData))
-		-- 드롭다운 갱신 필요시 안내
-		print("콘픽 저장 완료: " .. configName)
 	end)
 
 	SettingsTab:CreateButton("선택한 콘픽 불러오기", function()
@@ -595,10 +593,7 @@ function Library:CreateWindow(config)
 						registeredFlags[flag].set(val)
 					end
 				end
-				print("콘픽 불러오기 성공: " .. configName)
 			end
-		else
-			warn("해당 콘픽 파일이 존재하지 않습니다: " .. configName)
 		end
 	end)
 
@@ -616,19 +611,16 @@ function Library:CreateWindow(config)
 		end
 
 		writefile(filePath, httpService:JSONEncode(saveData))
-		print("콘픽 덮어쓰기 완료: " .. configName)
 	end)
 
 	SettingsTab:CreateButton("선택한 콘픽 삭제", function()
 		if not delfile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
 		local drop = registeredFlags["SelectedConfigDropdown"]
 		local configName = drop and drop.get() or "default"
-		if configName == "default" then return warn("default 콘픽은 삭제할 수 없습니다.") end
 		local filePath = ConfigFolderName .. "/" .. configName .. ".json"
 
 		if isfile and isfile(filePath) then
 			delfile(filePath)
-			print("콘픽 삭제 완료: " .. configName)
 		end
 	end)
 
