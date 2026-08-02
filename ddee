@@ -39,13 +39,13 @@ end
 
 function Library:CreateWindow(config)
 	config = config or {}
-	local titleText = config.Name or "Custom Hub"
-	local creditText = config.Credit or "By 놀랐으"
+	local titleText = config.Name or "Custom Hub"[cite: 1]
+	local creditText = config.Credit or "By 놀랐으"[cite: 1]
 
 	local toggleKey = Enum.KeyCode.K
 	local isBinding = false
 
-	local oldGui = coreGui:FindFirstChild("WinTeleportsGui")
+	local oldGui = coreGui:FindFirstChild("WinTeleportsGui")[cite: 1]
 	if oldGui then pcall(function() oldGui:Destroy() end) end
 
 	local ScreenGui = Instance.new("ScreenGui")
@@ -253,7 +253,7 @@ function Library:CreateWindow(config)
 			Frame.BackgroundColor3 = Color3.fromRGB(85, 50, 32)
 			Frame.Parent = ScrollFrame
 
-			local step = (max <= 1 or (max - min) <= 1) and 0.05 or 1
+			local step = (max <= 1 or (max - min) <= 1) and 0.05 or 1[cite: 1]
 			local range = max - min
 			local currentValue = default
 			local initPct = math.clamp((default - min) / (range == 0 and 1 or range), 0, 1)
@@ -269,7 +269,7 @@ function Library:CreateWindow(config)
 			local Label = Instance.new("TextLabel")
 			Label.Size = UDim2.new(0.4, 0, 1, 0)
 			Label.Position = UDim2.new(0, 12, 0, 0)
-			Label.Text = text .. " (" .. formatVal(default) .. ")"
+			Label.Text = text .. " (" .. formatVal(default) .. ")"[cite: 1]
 			Label.TextColor3 = Color3.fromRGB(255, 252, 245)
 			Label.Font = Enum.Font.SourceSans
 			Label.TextSize = 14
@@ -296,7 +296,7 @@ function Library:CreateWindow(config)
 				currentValue = val
 				local snappedPct = (val - min) / (range == 0 and 1 or range)
 				SliderButton.Position = UDim2.new(snappedPct, -8, 0.5, -10)
-				Label.Text = text .. " (" .. formatVal(val) .. ")"
+				Label.Text = text .. " (" .. formatVal(val) .. ")"[cite: 1]
 				if callback then callback(val) end
 			end
 
@@ -390,8 +390,8 @@ function Library:CreateWindow(config)
 			Label.BackgroundTransparency = 1
 			Label.Parent = DropdownFrame
 
-			local selectedKey = defaultKey or (options[1] or "")
-			local selectedDisplay = nameMap[selectedKey] or (selectedKey ~= "" and selectedKey or "없음")
+			local selectedKey = defaultKey or (options[1] or "New")
+			local selectedDisplay = nameMap[selectedKey] or selectedKey
 
 			local MainBtn = Instance.new("TextButton")
 			MainBtn.Size = UDim2.new(0.5, 0, 0, 30)
@@ -437,47 +437,38 @@ function Library:CreateWindow(config)
 
 			local function refreshOptions(newOptions)
 				options = newOptions
+				if #options == 0 then
+					options = {"New"}
+				end
+
 				for _, child in ipairs(Container:GetChildren()) do
 					if child:IsA("TextButton") then child:Destroy() end
 				end
 				
-				if #options == 0 then
-					local EmptyBtn = Instance.new("TextButton")
-					EmptyBtn.Size = UDim2.new(1, 0, 0, 25)
-					EmptyBtn.BackgroundColor3 = Color3.fromRGB(60, 35, 20)
-					EmptyBtn.Text = "콘픽 없음"
-					EmptyBtn.TextColor3 = Color3.fromRGB(180, 180, 180)
-					EmptyBtn.Font = Enum.Font.SourceSans
-					EmptyBtn.TextSize = 13
-					EmptyBtn.Parent = Container
-					selectedKey = ""
-					selectedDisplay = "없음"
-					MainBtn.Text = selectedDisplay .. " ▼"
-				else
-					for _, keyOpt in ipairs(options) do
-						local displayText = nameMap[keyOpt] or keyOpt
-						local OptBtn = Instance.new("TextButton")
-						OptBtn.Size = UDim2.new(1, 0, 0, 25)
-						OptBtn.BackgroundColor3 = Color3.fromRGB(60, 35, 20)
-						OptBtn.Text = displayText
-						OptBtn.TextColor3 = Color3.fromRGB(255, 252, 245)
-						OptBtn.Font = Enum.Font.SourceSans
-						OptBtn.TextSize = 13
-						OptBtn.Parent = Container
+				for _, keyOpt in ipairs(options) do
+					local displayText = nameMap[keyOpt] or keyOpt
+					local OptBtn = Instance.new("TextButton")
+					OptBtn.Size = UDim2.new(1, 0, 0, 25)
+					OptBtn.BackgroundColor3 = Color3.fromRGB(60, 35, 20)
+					OptBtn.Text = displayText
+					OptBtn.TextColor3 = Color3.fromRGB(255, 252, 245)
+					OptBtn.Font = Enum.Font.SourceSans
+					OptBtn.TextSize = 13
+					OptBtn.Parent = Container
 
-						OptBtn.MouseButton1Click:Connect(function()
-							selectedKey = keyOpt
-							selectedDisplay = displayText
-							MainBtn.Text = selectedDisplay .. " ▼"
-							if isOpen then toggleDropdown() end
-							if callback then callback(keyOpt) end
-						end)
-					end
-					if not table.find(options, selectedKey) then
-						selectedKey = options[1]
-						selectedDisplay = nameMap[selectedKey] or selectedKey
+					OptBtn.MouseButton1Click:Connect(function()
+						selectedKey = keyOpt
+						selectedDisplay = displayText
 						MainBtn.Text = selectedDisplay .. " ▼"
-					end
+						if isOpen then toggleDropdown() end
+						if callback then callback(keyOpt) end
+					end)
+				end
+
+				if not table.find(options, selectedKey) then
+					selectedKey = options[1]
+					selectedDisplay = nameMap[selectedKey] or selectedKey
+					MainBtn.Text = selectedDisplay .. " ▼"
 				end
 			end
 
@@ -507,10 +498,10 @@ function Library:CreateWindow(config)
 	end
 
 	-- 내장 Settings 탭 생성
-	local SettingsTab = WindowMethods:CreateTab("⚙️ㆍSettings")
+	local SettingsTab = WindowMethods:CreateTab("⚙️ㆍSettings")[cite: 1]
 	
 	-- 1. UI 투명도 조절
-	SettingsTab:CreateSlider("UI 투명도", 0, 1, 0.25, nil, function(val)
+	SettingsTab:CreateSlider("UI 투명도", 0, 1, 0.25, nil, function(val)[cite: 1]
 		MainFrame.BackgroundTransparency = val
 		Topbar.BackgroundTransparency = val
 	end)
@@ -524,7 +515,7 @@ function Library:CreateWindow(config)
 	local BindLabel = Instance.new("TextLabel")
 	BindLabel.Size = UDim2.new(0.4, 0, 1, 0)
 	BindLabel.Position = UDim2.new(0, 12, 0, 0)
-	BindLabel.Text = "UI 열기/닫기 단축키"
+	BindLabel.Text = "UI 열기/닫기 단축키"[cite: 1]
 	BindLabel.TextColor3 = Color3.fromRGB(255, 252, 245)
 	BindLabel.Font = Enum.Font.SourceSans
 	BindLabel.TextSize = 14
@@ -536,7 +527,7 @@ function Library:CreateWindow(config)
 	BindBtn.Size = UDim2.new(0.5, 0, 0, 30)
 	BindBtn.Position = UDim2.new(0.45, 0, 0.5, -15)
 	BindBtn.BackgroundColor3 = Color3.fromRGB(50, 28, 16)
-	BindBtn.Text = toggleKey.Name
+	BindBtn.Text = toggleKey.Name[cite: 1]
 	BindBtn.TextColor3 = Color3.fromRGB(255, 220, 180)
 	BindBtn.Font = Enum.Font.SourceSansBold
 	BindBtn.TextSize = 14
@@ -544,7 +535,7 @@ function Library:CreateWindow(config)
 
 	BindBtn.MouseButton1Click:Connect(function()
 		isBinding = true
-		BindBtn.Text = "키 입력 대기..."
+		BindBtn.Text = "키 입력 대기..."[cite: 1]
 	end)
 
 	userInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -553,7 +544,7 @@ function Library:CreateWindow(config)
 			if input.UserInputType == Enum.UserInputType.Keyboard then
 				toggleKey = input.KeyCode
 				isBinding = false
-				BindBtn.Text = toggleKey.Name
+				BindBtn.Text = toggleKey.Name[cite: 1]
 			end
 		else
 			if input.KeyCode == toggleKey then
@@ -562,7 +553,7 @@ function Library:CreateWindow(config)
 		end
 	end)
 
-	-- 3. 콘픽(설정) 매니저 시스템 (초기 빈 상태 지원)
+	-- 3. 콘픽(설정) 매니저 시스템 (기본값 'New' 제공)
 	local ConfigFolderName = "CustomHubConfigs"
 	if writefile and not isfolder(ConfigFolderName) then
 		makefolder(ConfigFolderName)
@@ -577,6 +568,9 @@ function Library:CreateWindow(config)
 					table.insert(list, name:sub(1, -6))
 				end
 			end
+		end
+		if #list == 0 then
+			table.insert(list, "New")
 		end
 		return list
 	end
@@ -597,7 +591,7 @@ function Library:CreateWindow(config)
 		if not writefile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
 		local nameBox = registeredFlags["ConfigNameBox"]
 		local configName = nameBox and nameBox.get() or ""
-		if configName == "" then return warn("콘픽 이름을 입력해주세요.") end
+		if configName == "" or configName == "New" then return warn("유효한 콘픽 이름을 입력해주세요.") end
 
 		local saveData = {}
 		for flag, data in pairs(registeredFlags) do
@@ -608,6 +602,13 @@ function Library:CreateWindow(config)
 
 		writefile(ConfigFolderName .. "/" .. configName .. ".json", httpService:JSONEncode(saveData))
 		refreshDropdownList()
+		
+		-- 저장 후 드롭다운 선택을 새로 만든 파일명으로 지정
+		local dropFlag = registeredFlags["SelectedConfigDropdown"]
+		if dropFlag and dropFlag.set then
+			dropFlag.set(configName)
+		end
+		
 		print("콘픽 저장 완료: " .. configName)
 	end)
 
@@ -615,7 +616,7 @@ function Library:CreateWindow(config)
 		if not readfile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
 		local drop = registeredFlags["SelectedConfigDropdown"]
 		local configName = drop and drop.get() or ""
-		if configName == "" then return warn("불러올 콘픽이 선택되지 않았습니다.") end
+		if configName == "" or configName == "New" then return warn("불러올 올바른 콘픽을 선택해주세요.") end
 		local filePath = ConfigFolderName .. "/" .. configName .. ".json"
 
 		if isfile and isfile(filePath) then
@@ -639,7 +640,7 @@ function Library:CreateWindow(config)
 		if not writefile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
 		local drop = registeredFlags["SelectedConfigDropdown"]
 		local configName = drop and drop.get() or ""
-		if configName == "" then return warn("덮어씌울 콘픽이 선택되지 않았습니다.") end
+		if configName == "" or configName == "New" then return warn("덮어씌울 올바른 콘픽을 선택해주세요.") end
 		local filePath = ConfigFolderName .. "/" .. configName .. ".json"
 
 		local saveData = {}
@@ -657,7 +658,7 @@ function Library:CreateWindow(config)
 		if not delfile then return warn("익스큐터가 file 기능을 지원하지 않습니다.") end
 		local drop = registeredFlags["SelectedConfigDropdown"]
 		local configName = drop and drop.get() or ""
-		if configName == "" then return warn("삭제할 콘픽이 선택되지 않았습니다.") end
+		if configName == "" or configName == "New" then return warn("삭제할 올바른 콘픽을 선택해주세요.") end
 		local filePath = ConfigFolderName .. "/" .. configName .. ".json"
 
 		if isfile and isfile(filePath) then
